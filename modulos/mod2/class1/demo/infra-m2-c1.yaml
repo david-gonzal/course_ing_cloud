@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'FormaTEC Demo - Mision 2: Replatform (Docker en AL2023) - Full Stack'
+
+Parameters:
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64'
+
+Resources:
+  # 1. Red Básica
+  DemoVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: FormaTEC-Demo-VPC
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DemoVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: FormaTEC-Public-Subnet
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref DemoVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DemoVPC
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # 2. Seguridad
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Habilitar acceso HTTP y SSH
+      VpcId: !Ref DemoVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  # 3. Cómputo (Instancia con Docker)
+  DockerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: !Ref LatestAmiId
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: FormaTEC-HolaMundo-Replatform
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # --- PARTE 1: REHOST (Apache Nativo en puerto 80) ---
+          dnf update -y
+          dnf install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "<h1>MISION 1: REHOST - Hola Mundo - Servidor Local Linux - (Puerto 80)</h1>" > /var/www/html/index.html
+
+          # --- PARTE 2: REPLATFORM (Docker en puerto 8080) ---
+          dnf install -y docker
+          systemctl start docker
+          systemctl enable docker
+          
+          mkdir -p /home/ec2-user/app
+          cd /home/ec2-user/app
+          echo "<h1>MISION 2: REPLATFORM - Hola Mundo - Servidor Local Linux - (Puerto 8080)</h1>" > index.html
+          echo "FROM nginx:alpine
+          COPY index.html /usr/share/nginx/html/index.html
+          EXPOSE 80" > Dockerfile
+
+          docker build -t web-app .
+          docker run -d -p 8080:80 web-app
+
+Outputs:
+  WebsiteURL:
+    Description: URL de la web en el contenedor
+    Value: !Sub "http://${DockerInstance.PublicIp}"
