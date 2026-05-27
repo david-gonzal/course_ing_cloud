@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  # El balanceador de carga expone el puerto 8080 al mundo exterior
+  balanceador:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8081:80"
+    depends_on:
+      - web-app
+
+  # Nuestra app que empezará con 1 sola réplica
+  web-app:
+    build: ./app

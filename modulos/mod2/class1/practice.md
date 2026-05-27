@@ -32,3 +32,6 @@ Ejecutamos
     localhost:8080
 
 validar con ip publica port 8080
+
+# Retire - Eliminar Stack
+aws cloudformation delete-stack --stack-name $nombre_del_stack
