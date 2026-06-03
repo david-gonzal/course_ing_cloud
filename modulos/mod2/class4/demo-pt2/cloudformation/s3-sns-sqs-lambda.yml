@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'FormaTEC - Laboratorio 1: Arquitectura Serverless Desacoplada (S3 -> SNS -> SQS -> Lambda)'
+
+Resources:
+  # 1. Topic de SNS (El Distribuidor)
+  NotificacionesSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: NotificacionesS3-CFN
+
+  # 2. Cola de SQS (El Amortiguador de tráfico)
+  ColaProcesamientoSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ColaProcesamientoS3-CFN
+
+  # 3. Suscripción de SQS al Topic de SNS
+  SuscripcionSNStoSQS:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt ColaProcesamientoSQS.Arn
+      Protocol: sqs
+      TopicArn: !Ref NotificacionesSNSTopic
+
+  # 4. Política de SQS: Permite a SNS enviar mensajes a la cola SQS
+  SQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ColaProcesamientoSQS
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PermitirSNSSendMessage
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt ColaProcesamientoSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref NotificacionesSNSTopic
+
+  # 5. Bucket de S3 (La Ingesta de archivos)
+  BucketIngestaS3:
+    Type: AWS::S3::Bucket
+    DependsOn: SNSTopicPolicy # S3 requiere que SNS tenga permisos antes de configurar las notificaciones
+    Properties:
+      BucketName: !Sub "formatec-ingesta-cfn-${AWS::AccountId}-${AWS::Region}"
+      NotificationConfiguration:
+        TopicConfigurations:
+          - Event: s3:ObjectCreated:*
+            Topic: !Ref NotificacionesSNSTopic
+
+  # 6. Política de SNS: Permite a S3 publicar eventos en el Topic de SNS
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref NotificacionesSNSTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PermitirS3Publish
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificacionesSNSTopic
+
+  # 7. Rol de IAM para la Lambda: Permisos de ejecución y lectura de SQS
+  RolEjecucionLambda:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
+
+  # 8. Función Lambda (El Procesador de datos)
+  ProcesadorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ProcesadorMensajesSQS-CFN
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt RolEjecucionLambda.Arn
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              for record in event['Records']:
+                  body = json.loads(record['body'])
+                  if 'Message' in body:
+                      sns_message = json.loads(body['Message'])
+                      if 'Records' in sns_message:
+                          s3_info = sns_message['Records'][0]['s3']
+                          print(f"🚀 [CFN-PROCESADOR] ¡Nuevo archivo detectado!")
+                          print(f"📁 Bucket: {s3_info['bucket']['name']}")
+                          print(f"📄 Archivo: {s3_info['object']['key']}")
+                          print(f"⚖️ Tamaño: {s3_info['object']['size']} bytes")
+              return {'statusCode': 200, 'body': json.dumps('Procesado')}
+
+  # 9. Trigger / Mapeo de Eventos: Conectar SQS con la Lambda
+  MapeoEventoSQS:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt ColaProcesamientoSQS.Arn
+      FunctionName: !Ref ProcesadorLambda
+
+Outputs:
+  BucketName:
+    Description: Nombre del Bucket de S3 creado
+    Value: !Ref BucketIngestaS3
+  SNSTopicARN:
+    Description: ARN del Topic de SNS creado
+    Value: !Ref NotificacionesSNSTopic
+  SQSQueueURL:
+    Description: URL de la Cola de SQS creada
+    Value: !Ref ColaProcesamientoSQS
