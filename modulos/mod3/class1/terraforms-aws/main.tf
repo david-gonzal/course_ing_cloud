@@ -50,7 +50,7 @@ resource "aws_instance" "servidor_web" {
               dnf install -y httpd
               systemctl start httpd
               systemctl enable httpd
-              echo "<h1>Desplegado con Terraform e IaC en FormaTEC 10/06</h1>" > /var/www/html/index.html
+              echo "<h1>Desplegado con Terraform e IaC en FormaTEC 12/06</h1>" > /var/www/html/index.html
               EOF
 
   tags = {
