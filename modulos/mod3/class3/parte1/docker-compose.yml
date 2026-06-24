@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  # Base de Datos PostgreSQL Efímera (Sin Volúmenes)
+  db:
+
+
+  # API NodeJS
+  back:
+
+
+  # Servidor Web Frontend
+  front:
