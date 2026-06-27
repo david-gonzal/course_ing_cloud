@@ -3,11 +3,29 @@ version: '3.8'
 services:
   # Base de Datos PostgreSQL Efímera (Sin Volúmenes)
   db:
-
+    image: postgres:15.3-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret123
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
 
   # API NodeJS
   back:
-
+    build: ./back
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:secret123@db:5432/postgres
+    depends_on:
+      - db
 
   # Servidor Web Frontend
   front:
+    build: ./front
+    ports:
+      - "8080:80"
+    depends_on:
+      - back

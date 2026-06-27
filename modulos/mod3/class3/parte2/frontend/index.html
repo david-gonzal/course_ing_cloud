@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>FormaTEC: Docker Lab</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: #38bdf8;
+        }
+
+        .status {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #34d399;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>FormaTEC Contenedores</h1>
+        <p>Estado de la arquitectura de la aplicación:</p>
+        <div id="resultado" class="status">Cargando datos desde la API del Backend...</div>
+    </div>
+
+    <script>
+        // Apuntamos al endpoint que expondrá nuestro backend
+        fetch('http://localhost:3000/api/data')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('resultado').innerText = `API Responde: "${data.mensaje}" (Conectado a DB: ${data.db_status})`;
+            })
+            .catch(err => {
+                document.getElementById('resultado').innerText = "⚠️ Error: No se puede conectar con el Backend.";
+                document.getElementById('resultado').style.color = "#ff4a4a";
+            });
+    </script>
+</body>
+
+</html>
