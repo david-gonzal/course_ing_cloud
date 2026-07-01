@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Infraestructura para desplegar App con Docker Compose (EC2 Ubuntu + Security Groups)'
+
+Parameters:
+  KeyName:
+    Description: 'Nombre de tu par de claves (.pem) existente en AWS para acceder por SSH'
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Default: 'par-clave'  
+
+Resources:
+  # -----------------------------------------------------------------
+  # MULTIPLES PUERTOS DE SEGURIDAD (Paso 2 del ejercicio anterior)
+  # -----------------------------------------------------------------
+  DockerAppSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Permitir SSH (22), Backend (3000) y Frontend (8080)'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0 # SSH accesible desde cualquier lugar
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0 # Frontend Docker
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0 # Backend Docker
+
+  # -----------------------------------------------------------------
+  # INSTANCIA EC2 UBUNTU (Paso 1 del ejercicio anterior)
+  # -----------------------------------------------------------------
+  DockerEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: t3.micro # Capa gratuita
+      ImageId: ami-04b70fa74e45c3917 # AMI de Ubuntu 24.04 LTS en us-east-1 (Ver nota abajo)
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref DockerAppSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: mi-servidor-docker
+
+Outputs:
+  PublicIP:
+    Description: 'IP publica de tu nuevo servidor. Usala para conectarte por SSH'
+    Value: !GetAtt DockerEC2Instance.PublicIp

@@ -1,0 +1,53 @@
+services:
+  # 1. Base de Datos PostgreSQL (segmentada y con persistencia)
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+  #montamos el volumen para persistir los datos de la base de datos
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+    #no exponemos el puerto 5432 (por defecto del postgres) al exterior (por seguridad estricta),
+    networks:
+      - red-privada
+
+# 2. servidor backend Node API (el puente de comunicacion d red)
+
+  # API NodeJS
+  back:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+    depends_on:
+      - db
+  #Pertenece a ambas redes para actuar como  puerta de enlace logica
+    networks:
+      - red-privada
+      - red-publica
+
+  # 3. Servidor Web Frontend de produccion
+  front:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - back
+    #solo puede comunicarse con el backend, no con la base de datos
+    networks:
+      - red-publica 
+#====================================================
+# DECLARACION DE REDES Y VOLUMENES
+#====================================================
+volumes:
+  datos_postgres: #docker-compose crea un volumen llamado datos_postgres para persistir los datos de la base de datos PostgreSQL. Este volumen se monta en el contenedor de la base de datos en la ruta /var/lib/postgresql/data, que es donde PostgreSQL almacena sus datos. Al usar un volumen, los datos de la base de datos se mantienen incluso si el contenedor se detiene o se elimina, lo que garantiza la persistencia de los datos.     
+
+networks: 
+  red-privada:
+    driver: bridge #red aislada de alta seguridad para la base de datos, solo accesible desde la API
+  red-publica:
+    driver: bridge  #red para comunicacion del frontd y la API
