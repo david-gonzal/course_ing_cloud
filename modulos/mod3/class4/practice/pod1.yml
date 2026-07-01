@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-demo-red
+  labels:
+    app: demo-networking # Etiqueta clave para que los servicios lo descubran
+spec:
+  containers:
+    - name: nginx-container
+      image: nginx:alpine
+      ports:
+        - containerPort: 80

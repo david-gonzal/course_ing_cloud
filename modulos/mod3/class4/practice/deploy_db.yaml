@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-db
+  namespace: formatec-apps # <--- Encapsulado en nuestro namespace
+  labels:
+    app: db-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-pod
+  template:
+    metadata:
+      labels:
+        app: postgres-pod
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: postgres_dev
+            - name: POSTGRES_PASSWORD
+              value: MiSuperClave123
+            - name: POSTGRES_DB
+              value: formatec_db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db
+  namespace: formatec-apps # <--- Mismo namespace
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres-pod
