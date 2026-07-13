@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-troubleshooter
+spec:
+  containers:
+  - name: psql-client
+    image: postgres:15-alpine
+    command: ["/bin/sh", "-c", "sleep 3600"]
+    env:
+    - name: PGPASSWORD
+      value: "password123" # <--- CAMBIA ESTO por tu password real
+  restartPolicy: Never

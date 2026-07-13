@@ -1,0 +1,87 @@
+# --- DB ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-db
+spec:
+  selector: { matchLabels: { app: db } }
+  template:
+    metadata: { labels: { app: db } }
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_USER
+          valueFrom: { secretKeyRef: { name: db-credentials, key: username } }
+        - name: POSTGRES_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-credentials, key: password } }
+        - name: POSTGRES_DB # <--- AGREGA ESTO
+          valueFrom: { configMapKeyRef: { name: db-config, key: db_name } }
+        volumeMounts: [{ mountPath: /var/lib/postgresql/data, name: db-data }]
+      volumes: [{ name: db-data, persistentVolumeClaim: { claimName: postgres-pvc } }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  ports: [{ port: 5432 }]
+  selector: { app: db }
+---
+# --- Backend ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  selector: { matchLabels: { app: backend } }
+  template:
+    metadata: { labels: { app: backend } }
+    spec:
+      containers:
+      - name: api
+        image: courseipap/backend:1.0.4
+        imagePullPolicy: IfNotPresent
+        ports: [{ containerPort: 3000 }]
+        env:
+        - name: POSTGRES_USER
+          valueFrom: { secretKeyRef: { name: db-credentials, key: username } }
+        - name: POSTGRES_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-credentials, key: password } }
+        - name: POSTGRES_DB
+          valueFrom: { configMapKeyRef: { name: db-config, key: db_name } }
+        - name: DB_HOST
+          value: "db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  ports: [{ port: 3000 }]
+  selector: { app: backend }
+---
+# --- Frontend ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  selector: { matchLabels: { app: frontend } }
+  template:
+    metadata: { labels: { app: frontend } }
+    spec:
+      containers:
+      - name: nginx
+        image: courseipap/frontend:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports: [{ containerPort: 80 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  ports: [{ port: 80 }]
+  selector: { app: frontend }
