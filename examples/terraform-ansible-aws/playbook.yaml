@@ -1,0 +1,56 @@
+---
+# ==============================================================================
+# PLAY 1: CONFIGURACIÓN COMÚN (Para todos los servidores: Frontend y Backend)
+# ==============================================================================
+- name: Preparar entorno base y Docker en todos los nodos
+  hosts: backend:frontend # Se aplica a ambos grupos
+  become: yes
+  tasks:
+    - name: Actualizar cache APT e instalar Docker
+      apt:
+        name: [ca-certificates, curl, gnupg, python3-pip, docker.io]
+        state: present
+        update_cache: yes
+
+    - name: Instalar Docker SDK para Python
+      pip:
+        name: docker
+        state: present
+
+    - name: Asegurar servicio de Docker activo
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+# ==============================================================================
+# PLAY 2: DESPLIEGUE DEL BACKEND (Solo en el grupo backend)
+# ==============================================================================
+- name: Desplegar Servicio de API / Backend
+  hosts: backend
+  become: yes
+  tasks:
+    - name: Levantar contenedor de la API (Simulado con un servidor HTTP en puerto 8080)
+      docker_container:
+        name: api_service
+        image: jwilder/whoami # Una imagen de prueba genial que responde con el ID del contenedor
+        state: started
+        published_ports:
+          - "8080:8000"
+
+# ==============================================================================
+# PLAY 3: DESPLIEGUE DEL FRONTEND (Solo en el grupo frontend)
+# ==============================================================================
+- name: Desplegar Proxy Reverso / Frontend
+  hosts: frontend
+  become: yes
+  tasks:
+    - name: Levantar Nginx actuando como Proxy hacia el Backend
+      docker_container:
+        name: nginx_frontend
+        image: nginx:alpine
+        state: started
+        published_ports:
+          - "80:80"
+      # NOTA PEDAGÓGICA: En una clase avanzada aquí les enseñas a pasarle un archivo
+      # de configuración personalizado a Nginx para que redirija a la IP del Backend.

@@ -55,6 +55,8 @@ curl -v http://localhost
 curl -v http://localhost/api/data
 curl -X POST http://localhost/api/data -H "Content-Type: application/json" -d '{"nombre": "Estudiante", "clase": "Kubernetes"}'
 6- Resiliencia:
+ejecutar
+  while true; do curl -s http://localhost/api/data; echo ""; sleep 1; done
 kubectl delete pod -l app=db
 kubectl get pods -w
 7- HPA 

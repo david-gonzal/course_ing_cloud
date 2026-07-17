@@ -10,17 +10,20 @@ spec:
     metadata: { labels: { app: db } }
     spec:
       containers:
-      - name: postgres
-        image: postgres:15-alpine
-        env:
-        - name: POSTGRES_USER
-          valueFrom: { secretKeyRef: { name: db-credentials, key: username } }
-        - name: POSTGRES_PASSWORD
-          valueFrom: { secretKeyRef: { name: db-credentials, key: password } }
-        - name: POSTGRES_DB # <--- AGREGA ESTO
-          valueFrom: { configMapKeyRef: { name: db-config, key: db_name } }
-        volumeMounts: [{ mountPath: /var/lib/postgresql/data, name: db-data }]
-      volumes: [{ name: db-data, persistentVolumeClaim: { claimName: postgres-pvc } }]
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                { secretKeyRef: { name: db-credentials, key: username } }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                { secretKeyRef: { name: db-credentials, key: password } }
+            - name: POSTGRES_DB # <--- AGREGA ESTO
+              valueFrom: { configMapKeyRef: { name: db-config, key: db_name } }
+          volumeMounts: [{ mountPath: /var/lib/postgresql/data, name: db-data }]
+      volumes:
+        [{ name: db-data, persistentVolumeClaim: { claimName: postgres-pvc } }]
 ---
 apiVersion: v1
 kind: Service
@@ -43,24 +46,26 @@ spec:
     metadata: { labels: { app: backend } }
     spec:
       containers:
-      - name: api
-        image: courseipap/backend:1.0.0
-        imagePullPolicy: IfNotPresent
-        resources:
-          requests:
-            cpu: "50m"  # Solicita 50 milicores
-          limits:
-            cpu: "100m"
-        ports: [{ containerPort: 3000 }]
-        env:
-        - name: POSTGRES_USER
-          valueFrom: { secretKeyRef: { name: db-credentials, key: username } }
-        - name: POSTGRES_PASSWORD
-          valueFrom: { secretKeyRef: { name: db-credentials, key: password } }
-        - name: POSTGRES_DB
-          valueFrom: { configMapKeyRef: { name: db-config, key: db_name } }
-        - name: DB_HOST
-          value: "db"
+        - name: api
+          image: courseipap/backend:1.0.0
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "50m" # Solicita 50 milicores
+            limits:
+              cpu: "100m"
+          ports: [{ containerPort: 3000 }]
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                { secretKeyRef: { name: db-credentials, key: username } }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                { secretKeyRef: { name: db-credentials, key: password } }
+            - name: POSTGRES_DB
+              valueFrom: { configMapKeyRef: { name: db-config, key: db_name } }
+            - name: DB_HOST
+              value: "db"
 ---
 apiVersion: v1
 kind: Service
@@ -83,10 +88,10 @@ spec:
     metadata: { labels: { app: frontend } }
     spec:
       containers:
-      - name: nginx
-        image: courseipap/frontend:1.0.0
-        imagePullPolicy: IfNotPresent
-        ports: [{ containerPort: 80 }]
+        - name: nginx
+          image: courseipap/frontend:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 80 }]
 ---
 apiVersion: v1
 kind: Service
