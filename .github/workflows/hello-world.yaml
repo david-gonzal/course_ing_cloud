@@ -26,6 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
-        run: actions/checkout@v4
+        uses: actions/checkout@v4
       - name: LS
         run: ls -la
