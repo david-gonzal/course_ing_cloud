@@ -6,3 +6,12 @@ jobs:
     steps:
       - name: hello-world
         run: echo "Hello-world"
+
+      - name: touch file
+        run: touch test.txt
+
+      - name: set
+        run: echo "hello" >> test.txt
+
+      - name: show
+        run: cat test.txt
