@@ -17,7 +17,7 @@ jobs:
         run: touch test.txt
 
       - name: set
-        run: echo "hello" >> test.txt
+        run: echo "hello integration" >> test.txt
 
       - name: show
         run: cat test.txt
