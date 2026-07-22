@@ -30,3 +30,10 @@ jobs:
         uses: actions/checkout@v4
       - name: LS
         run: ls -la
+
+      - name: Build imagen
+        uses: docker/build-push-action@v5
+        with:
+          context: modulos/mod2/class3/demo/resiliencia/app-inventario
+          file: ./Dockerfile
+          tags: jgigena90/appinventario:latest
