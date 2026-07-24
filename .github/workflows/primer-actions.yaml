@@ -35,3 +35,19 @@ jobs:
 
       - name: LS
         run: ls -la
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+
+      - name: docler build
+        uses: docker/setup-buildx-action@v3
+
+      - name: build image
+        uses: docker/build-push-action@v5
+        with:
+          contex: .
+          file: ./Dockerfile
+          tags: jgigena90/app-inventario:1.0
