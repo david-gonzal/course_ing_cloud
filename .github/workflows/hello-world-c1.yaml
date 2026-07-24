@@ -1,6 +1,11 @@
 name: Hello-world-Ipap
 
-on: push
+on:
+  push:
+    branches: ["integration"]
+  pull_request:
+    branches:
+      - main
 
 jobs:
   hola:
