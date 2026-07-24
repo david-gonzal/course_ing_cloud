@@ -17,3 +17,9 @@ jobs:
 
       - name: show file
         run: cat -n test.txt
+
+  otro:
+    runs-on: ubuntu-latest
+    steps:
+      - name: LS
+        run: ls -la
