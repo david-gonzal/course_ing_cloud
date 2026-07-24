@@ -18,7 +18,7 @@ jobs:
         run: touch test.txt
 
       - name: set test.txt
-        run: echo "Hola mundo" >> test.txt
+        run: echo "Hola mundo integration" >> test.txt
 
       - name: LS
         run: ls -la
