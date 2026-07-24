@@ -8,3 +8,12 @@ jobs:
     steps:
       - name: Hello-world-Ipap
         run: echo "Hello, wolrd"
+
+      - name: touch file
+        run: touch test.txt
+
+      - name: set test.txt
+        run: echo "Hola mundo" >> test.txt
+
+      - name: show file
+        run: cat -n test.txt
