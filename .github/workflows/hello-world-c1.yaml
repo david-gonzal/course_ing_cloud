@@ -5,3 +5,6 @@ on: push
 jobs:
   hola:
     runs-on: ubuntu-latest
+    steps:
+      - name: Hello-world-Ipap
+        run: echo "Hello, wolrd"
