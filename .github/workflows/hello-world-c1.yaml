@@ -1,0 +1,7 @@
+name: Hello-world-Ipap
+
+on: push
+
+jobs:
+  hola:
+    runs-on: ubuntu-latest
