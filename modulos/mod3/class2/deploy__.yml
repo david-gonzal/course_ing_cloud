@@ -1,3 +1,4 @@
+---
 - name: Configurar Servidor con Docker y Nginx
   hosts: aws_web
   become: yes
@@ -8,7 +9,7 @@
         update_cache: yes
         cache_valid_time: 3600
 
-    - name: 2. Instalar prerrequisitos del sistema y pip
+    - name: 2. Instalar prerrequisitos del sistema
       apt:
         pkg:
           - ca-certificates
@@ -17,28 +18,21 @@
           - python3-pip
         state: present
 
-    - name: 3. Instalar el motor de Docker (Docker Engine)
+    - name: 3. Instalar la libreria Docker SDK para Python
+      pip:
+        name: docker
+        state: present
+
+    - name: 4. Instalar el motor de Docker (Docker Engine)
       apt:
         name: docker.io
         state: present
 
-    - name: 4. Asegurar que el servicio de Docker este activo
+    - name: 5. Asegurar que el servicio de Docker este activo
       service:
         name: docker
         state: started
         enabled: yes
-
-    - name: 5. Instalar la libreria Docker SDK para Python (Actualizada)
-      pip:
-        name: docker
-        state: latest
-        executable: pip3
-
-    - name: 5.5. Forzar version compatible de requests para evitar error http+docker
-      pip:
-        name: requests==2.31.0
-        state: present
-        executable: pip3
 
     - name: 6. Desplegar contenedor de Nginx en el puerto 80
       docker_container:
