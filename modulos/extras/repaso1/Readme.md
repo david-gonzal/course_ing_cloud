@@ -46,10 +46,10 @@ minikube addons enable ingress
 minikube image load courseipap/backend:1.0.0
 minikube image load courseipap/frontend:1.0.0
 3- Despliegue de Infra:
-k create namespace lab-ipap
-k apply -f db-storage.yml -n lab-ipap
-k apply -f db-secrets-config.yaml -n lab-ipap
-k apply -f postgres-deployment.yaml -n lab-ipap
+k create namespace labipap
+k apply -f db-storage.yml -n labipap
+k apply -f db-secrets-config.yaml -n labipap
+k apply -f postgres-deployment.yaml -n labipap
 4- Tunelización:
 minikube tunnel (en una terminal separada)
 5- Configuración Ingress:
