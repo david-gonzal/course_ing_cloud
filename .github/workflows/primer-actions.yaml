@@ -1,11 +1,6 @@
 name: Hello-world-Ipap
 
-on:
-  push:
-    branches: ["integration"]
-  pull_request:
-    branches:
-      - main
+on: push
 
 jobs:
   hola:
@@ -18,7 +13,7 @@ jobs:
         run: touch test.txt
 
       - name: set test.txt
-        run: echo "Hola mundo integration" >> test.txt
+        run: echo "Hola mundo igitntegration" >> test.txt
 
       - name: LS
         run: ls -la
