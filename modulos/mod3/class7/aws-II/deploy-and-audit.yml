@@ -1,0 +1,79 @@
+---
+- name: "FASE 1: Preparación e Instalación de Docker en todos los nodos"
+  hosts: servidores_web
+  become: yes
+  tasks:
+    - name: "1. Actualizar caché de APT"
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: "2. Instalar dependencias base"
+      apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+        state: present
+
+    - name: "3. Instalar Docker"
+      apt:
+        name: docker.io
+        state: present
+
+    - name: "4. Asegurar que Docker esté activo e iniciado"
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: "5. Agregar usuario ubuntu al grupo docker"
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: "5b. Ajustar permisos del socket de Docker"
+      file:
+        path: /var/run/docker.sock
+        mode: "0666"
+
+- name: "FASE 2: Despliegue de Servicio Web Nginx (Nodo Nginx)"
+  hosts: web_nginx
+  become: yes
+  tasks:
+    - name: "6. Desplegar contenedor Docker de Nginx (Puerto 80)"
+      community.docker.docker_container:
+        name: servicio-web-nginx
+        image: nginx:alpine
+        state: started
+        restart_policy: always
+        published_ports:
+          - "80:80"
+
+- name: "FASE 3: Despliegue de Servicio Web Apache (Nodo Apache)"
+  hosts: web_apache
+  become: yes
+  tasks:
+    - name: "7. Desplegar contenedor Docker de Apache (Puerto 8080)"
+      community.docker.docker_container:
+        name: servicio-web-apache
+        image: httpd:alpine
+        state: started
+        restart_policy: always
+        published_ports:
+          - "8080:80"
+
+- name: "FASE 4: Verificación y Auditoría de Estado de Servicios"
+  hosts: servidores_web
+  tasks:
+    - name: "8. Verificar respuesta HTTP local del servicio"
+      uri:
+        url: "{{ 'http://localhost:80' if 'web_nginx' in group_names else 'http://localhost:8080' }}"
+        status_code: 200
+      register: web_check
+
+    - name: "9. Mostrar Estado del Servicio Auditado"
+      debug:
+        msg: "El servidor {{ inventory_hostname }} ({{ ansible_host }}) está funcionando CORRECTAMENTE. Respuesta HTTP 200 OK."
