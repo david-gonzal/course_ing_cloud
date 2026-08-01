@@ -1,0 +1,16 @@
+==================================================
+REPORTE DE AUDITORIA Y COMPLIANCE - KUBERNETES
+==================================================
+Fecha de ejecucion: 2026-08-01 13:17:43
+Cluster Context: Minikube Local
+Namespace Auditado: audit-lab
+
+[ RECURSOS EVALUADOS ]:
+- Pod: web-app-55ccb75d59-4pgc5
+  Imagen: nginx:alpine
+  Estado: Running
+  Politica Non-Root: FALLIDO (Corre como root)
+
+--------------------------------------------------
+DICTAMEN: EVALUACION COMPLETADA PARA AUDITORIA
+==================================================
