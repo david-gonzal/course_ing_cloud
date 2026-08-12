@@ -34,17 +34,17 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ./modulos/extras/reapso3
+        working-directory: ./modulos/extras/repaso3
 
       - name: Terraform Format Check
         run: terraform fmt -check
-        working-directory: ./modulos/extras/reapso3
+        working-directory: ./modulos/extras/repaso3
 
       - name: Terraform Plan
         run: terraform plan -input=false
-        working-directory: ./modulos/extras/reapso3
+        working-directory: ./modulos/extras/repaso3
 
       - name: Terraform apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
-        working-directory: ./modulos/extras/reapso3
+        working-directory: ./modulos/extras/repaso3
