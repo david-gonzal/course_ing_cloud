@@ -23,8 +23,8 @@ jobs:
       - name: Configurar
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_DEVELOPER }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEVELOPER }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Configurar terraform
@@ -44,12 +44,12 @@ jobs:
         run: terraform plan -input=false
         working-directory: ./modulos/extras/repaso3
 
-      # - name: Terraform apply
-      #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      #   run: terraform apply -auto-approve -input=false
-      #   working-directory: ./modulos/extras/repaso3
-
-      - name: Terraform destroy
+      - name: Terraform apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform destroy -auto-approve -input=false
+        run: terraform apply -auto-approve -input=false
         working-directory: ./modulos/extras/repaso3
+
+      # - name: Terraform destroy
+      #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      #   run: terraform destroy -auto-approve -input=false
+      #   working-directory: ./modulos/extras/repaso3
