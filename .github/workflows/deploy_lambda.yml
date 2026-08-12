@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+env:
+  env.AWS_REGION: ${{AWS_REGION || 'us-east-1'}}
+
 jobs:
   terraform:
     name: "Terraform plan & apply"
