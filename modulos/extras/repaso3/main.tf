@@ -57,6 +57,7 @@ EOF
 }
 
 #3 Funtion lambda
+
 resource "aws_lambda_function" "log_auditoria_processor" {
   function_name    = "analizador_registros_transacciones"
   role             = aws_iam_role.lambda_auditoria_role.arn
