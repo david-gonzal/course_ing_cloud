@@ -42,12 +42,12 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -input=false
-        #working-directory: ./modulos/extras/repaso3
+        working-directory: ./modulos/extras/repaso3
 
       - name: Terraform apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
-        #working-directory: ./modulos/extras/repaso3
+        working-directory: ./modulos/extras/repaso3
 
       # Pausa de 2 minutos (120 segundos) para la demostración en vivo
       - name: Pausa para inspección en AWS (2 min)
@@ -57,4 +57,4 @@ jobs:
       - name: Terraform destroy
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform destroy -auto-approve -input=false
-        #working-directory: ./modulos/extras/repaso3
+        working-directory: ./modulos/extras/repaso3
