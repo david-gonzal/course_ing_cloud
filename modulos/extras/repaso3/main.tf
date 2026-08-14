@@ -2,7 +2,7 @@ data "aws_caller_identity" "current" {}
 
 #1. Bucket s3
 resource "aws_s3_bucket" "auditoria_ingesta" {
-  bucket = "auditoria-${data.aws_caller_identity.current.account_id}"
+  bucket        = "auditoria-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
 }
 
