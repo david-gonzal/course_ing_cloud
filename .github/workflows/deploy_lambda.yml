@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+env:
+  AWS_REGION: ${{vars.AWS_REGION || 'us-east-1'}}
+
 jobs:
   terraform:
     name: "Terraform plan & apply"
@@ -17,6 +20,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Config Credentials AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
+          aws-secret-access-key: ${{secrets.AWS_SECRETS_ACCESS_KEY}}
+          aws-region: ${{env.AWS_REGION}}
+
       - name: Configurar terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -24,7 +34,7 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ./modulos/extras/repaso3
+        #working-directory: ./modulos/extras/repaso3
 
       - name: Terraform Format Check
         run: terraform fmt -check
