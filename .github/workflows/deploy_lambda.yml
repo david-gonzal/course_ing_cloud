@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+env:
+  AWS_REGION: ${{vars.AWS_REGION || 'us-east-1'}}
+
 jobs:
   terraform:
     name: "Terraform plan & apply"
@@ -17,12 +20,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar
+      - name: Config Credentials AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
+          aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          aws-region: ${{env.AWS_REGION}}
 
       - name: Configurar terraform
         uses: hashicorp/setup-terraform@v3
@@ -31,13 +34,27 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        working-directory: ./modulos/extras/repaso3
 
       - name: Terraform Format Check
         run: terraform fmt -check
+        working-directory: ./modulos/extras/repaso3
 
       - name: Terraform Plan
         run: terraform plan -input=false
+        working-directory: ./modulos/extras/repaso3
 
       - name: Terraform apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
+        working-directory: ./modulos/extras/repaso3
+
+      # Pausa de 2 minutos (120 segundos) para la demostración en vivo
+      - name: Pausa para inspección en AWS (2 min)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: sleep 100
+
+      - name: Terraform destroy
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform destroy -auto-approve -input=false
+        working-directory: ./modulos/extras/repaso3
