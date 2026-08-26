@@ -62,3 +62,17 @@
     cat datos_recuperados.json
 
 ## 10. Eliminar    
+    # Eliminar archivos locales
+    rm -f datos_sensibles.json reporte_encriptado.enc datos_recuperados.json
+
+    # Eliminar variables de entorno usadas
+    unset KEY_ID KEY_OUTPUT PLAINTEXT_DK CIPHERTEXT_DK DECRYPTED_DK
+
+    # Eliminar el Alias de la llave
+    aws kms delete-alias --alias-name "alias/mi-llave-maestra-auditoria"
+
+    # Delete s3
+    aws s3 rm s3://empresa-auditoria-cumplimiento-2026/reportes/reporte_encriptado.enc
+    aws s3 rb s3://empresa-auditoria-cumplimiento-2026 --force
+
+
