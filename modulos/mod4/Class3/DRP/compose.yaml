@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: appdb
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
-      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - ./init-primary.sql:/docker-entrypoint-initdb.d/init.sql
     command: >
@@ -23,43 +23,68 @@ services:
     container_name: db-replica
     environment:
       PGPASSWORD: password123
+      POSTGRES_HOST_AUTH_METHOD: trust
     depends_on:
       - db-primary
-    command: >
+    command: |
       bash -c "
-      until pg_isready -h db-primary -U admin; do sleep 1; done;
+      until pg_isready -h db-primary -p 5432 -U admin -d appdb; do
+        echo 'Esperando a db-primary...';
+        sleep 2;
+      done;
+      
       rm -rf /var/lib/postgresql/data/*;
-      pg_basebackup -h db-primary -D /var/lib/postgresql/data -U admin -v -P -X stream;
+      
+      until PGPASSWORD=password123 pg_basebackup -h db-primary -D /var/lib/postgresql/data -U admin -v -P -X stream; do
+        echo 'Reintentando pg_basebackup...';
+        sleep 2;
+      done;
+      
       touch /var/lib/postgresql/data/standby.signal;
       echo 'port = 5432' >> /var/lib/postgresql/data/postgresql.conf;
-      exec postgres;
+      
+      chown -R postgres:postgres /var/lib/postgresql/data;
+      chmod 700 /var/lib/postgresql/data;
+      
+      exec su-exec postgres postgres;
       "
 
   # Backend App Node A (Primario)
   app-node-a:
     image: python:3.10-slim
     container_name: app-node-a
-    command: >
+    command: |
       bash -c "
-      pip install flask psycopg2-binary;
+      pip install flask psycopg2-binary
       cat <<'EOF' > app.py
       from flask import Flask
       import psycopg2, datetime, os
+
       app = Flask(__name__)
       DB_HOST = os.getenv('DB_HOST', 'db-primary')
+
       @app.route('/tx', methods=['POST'])
       def tx():
           try:
-              conn = psycopg2.connect(host=DB_HOST, dbname='appdb', user='admin', password='password123', connect_timeout=2)
+              conn = psycopg2.connect(
+                  host=DB_HOST, 
+                  dbname='appdb', 
+                  user='admin', 
+                  password='password123', 
+                  connect_timeout=2
+              )
               cur = conn.cursor()
               cur.execute('INSERT INTO transacciones (created_at) VALUES (%s) RETURNING id;', (datetime.datetime.now(),))
               tx_id = cur.fetchone()[0]
               conn.commit()
-              cur.close(); conn.close()
+              cur.close()
+              conn.close()
               return f'Node A -> TX {tx_id} OK\n', 200
           except Exception as e:
               return str(e), 500
-      app.run(host='0.0.0.0', port=5000)
+
+      if __name__ == '__main__':
+          app.run(host='0.0.0.0', port=5000)
       EOF
       python app.py
       "
@@ -70,27 +95,38 @@ services:
   app-node-b:
     image: python:3.10-slim
     container_name: app-node-b
-    command: >
+    command: |
       bash -c "
-      pip install flask psycopg2-binary;
+      pip install flask psycopg2-binary
       cat <<'EOF' > app.py
       from flask import Flask
       import psycopg2, datetime, os
+
       app = Flask(__name__)
       DB_HOST = os.getenv('DB_HOST', 'db-replica')
+
       @app.route('/tx', methods=['POST'])
       def tx():
           try:
-              conn = psycopg2.connect(host=DB_HOST, dbname='appdb', user='admin', password='password123', connect_timeout=2)
+              conn = psycopg2.connect(
+                  host=DB_HOST, 
+                  dbname='appdb', 
+                  user='admin', 
+                  password='password123', 
+                  connect_timeout=2
+              )
               cur = conn.cursor()
               cur.execute('INSERT INTO transacciones (created_at) VALUES (%s) RETURNING id;', (datetime.datetime.now(),))
               tx_id = cur.fetchone()[0]
               conn.commit()
-              cur.close(); conn.close()
+              cur.close()
+              conn.close()
               return f'Node B -> TX {tx_id} OK\n', 200
           except Exception as e:
               return str(e), 500
-      app.run(host='0.0.0.0', port=5000)
+
+      if __name__ == '__main__':
+          app.run(host='0.0.0.0', port=5000)
       EOF
       python app.py
       "
@@ -108,4 +144,3 @@ services:
     depends_on:
       - app-node-a
       - app-node-b
-
