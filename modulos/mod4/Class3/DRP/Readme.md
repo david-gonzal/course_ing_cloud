@@ -22,7 +22,7 @@
     docker exec -it db-replica psql -U admin -d appdb -c "SELECT id, created_at FROM transacciones ORDER BY id DESC LIMIT 1;"
 
 ## Ejecutar Failover (Warm Standby / Promoción)
-    docker exec -it db-replica pg_ctl promote -D /var/lib/postgresql/data
+    docker exec -it db-replica su-exec postgres pg_ctl promote -D /var/lib/postgresql/data
 
 ## Terminal 1, inicia la generación continua de tráfico HTTP
     curl -X POST http://localhost:8080/tx
