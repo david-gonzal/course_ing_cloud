@@ -1,0 +1,105 @@
+# ==============================================================================
+# 1. RBAC RESTRINGIDO (Menor Privilegio)
+# ==============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-seguro
+---
+# ==============================================================================
+# 2. POD FRONTEND HARDENED (Aplicación Web Segura)
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-segura
+  labels:
+    app: frontend
+    role: autorizado
+spec:
+  serviceAccountName: sa-seguro
+  automountServiceAccountToken: false # Evita la inyección del token de API
+
+  securityContext:
+    runAsNonRoot: true # Exige usuario sin privilegios
+    runAsUser: 101 # UID predeterminado de nginx unprivileged
+    fsGroup: 101
+
+  containers:
+    - name: web
+      image: nginxinc/nginx-unprivileged:alpine
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true # Mantenemos el filesystem en solo lectura
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        limits:
+          memory: "128Mi" #OMM Kill -> reboot
+          cpu: "250m" #No pasa nada -> latencia
+        requests:
+          memory: "64Mi"
+          cpu: "100m"
+
+      # Montamos carpetas efímeras para que Nginx escriba sus archivos temporales en memoria
+      volumeMounts:
+        - name: nginx-tmp
+          mountPath: /tmp
+        - name: nginx-cache
+          mountPath: /var/cache/nginx
+        - name: nginx-run
+          mountPath: /var/run
+
+  # Definición de los volúmenes temporales en memoria RAM (tmpfs)
+  volumes:
+    - name: nginx-tmp
+      emptyDir:
+        medium: Memory
+    - name: nginx-cache
+      emptyDir:
+        medium: Memory
+    - name: nginx-run
+      emptyDir:
+        medium: Memory
+---
+# ==============================================================================
+# 3. BASE DE DATOS AISLADA
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-sensible
+  labels:
+    app: database
+spec:
+  automountServiceAccountToken: false
+  containers:
+    - name: redis
+      image: redis:alpine
+      resources:
+        limits:
+          memory: "128Mi"
+          cpu: "250m"
+---
+# ==============================================================================
+# 4. NETWORK POLICY (Aislamiento Pod-to-Pod)
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aislar-db
+spec:
+  podSelector:
+    matchLabels:
+      app: database # Aplica las reglas sobre la DB
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: autorizado # 🛑 REMEDIACIÓN: Permite tráfico ÚNICAMENTE desde pods con la etiqueta 'role: autorizado'
+      ports:
+        - protocol: TCP
+          port: 6379
