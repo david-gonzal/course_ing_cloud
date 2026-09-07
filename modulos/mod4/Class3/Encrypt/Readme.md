@@ -20,7 +20,7 @@
     "cliente": "Empresa Corp",
     "tarjeta": "4500-xxxx-xxxx-1234"
     }
-    EOF
+EOF
 
 ## 4. Solicitar Data Key a KMS y extraer componentes
     KEY_OUTPUT=$(aws kms generate-data-key \

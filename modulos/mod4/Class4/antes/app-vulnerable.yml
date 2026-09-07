@@ -1,0 +1,49 @@
+# 1. ServiceAccount con permisos excesivos (Mala Práctica de RBAC)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-vulnerable
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pwn-cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: sa-vulnerable
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin # ⚠️ ¡ERROR GRAVE! Concede acceso total a la API de K8s
+  apiGroup: rbac.authorization.k8s.io
+---
+# 2. Pod Vulnerable ejecutándose como Root y usando el ServiceAccount peligroso
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-vulnerable
+  labels:
+    app: frontend
+spec:
+  serviceAccountName: sa-vulnerable # Asigna la identidad con permisos de Admin
+  containers:
+    - name: web
+      image: ubuntu:22.04
+      command:
+        [
+          "/bin/sh",
+          "-c",
+          "apt-get update && apt-get install -y curl tcpdump && sleep 3600",
+        ]
+---
+# 3. Base de Datos objetivo
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-sensible
+  labels:
+    app: database
+spec:
+  containers:
+    - name: redis
+      image: redis:alpine
