@@ -1,0 +1,48 @@
+- name: Configurar Servidor Web en AWS EC2
+  hosts: all
+  become: true
+  vars:
+    db_host: "172.17.0.1"
+    db_port: "5432"
+    db_name: "banco_db"
+    db_user: "admin_banco"
+    db_pass: "SecretPassword123!"
+
+  tasks:
+    - name: Instalar Docker
+      dnf:
+        name: docker
+        state: present
+
+    - name: Iniciar servicio de Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Crear directorio para la aplicación
+      file:
+        path: /opt/web_app
+        state: directory
+        mode: "0755"
+
+    - name: Copiar script de Python al servidor
+      copy:
+        src: app.py
+        dest: /opt/web_app/app.py
+        mode: "0644"
+
+    - name: Eliminar contenedor anterior si existe
+      shell: docker rm -f web_app || true
+
+    - name: Desplegar aplicación Python/Flask en Docker
+      shell: |
+        docker run -d --name web_app -p 80:5000 \
+          -v /opt/web_app/app.py:/app/app.py \
+          -w /app \
+          -e DB_HOST="{{ db_host }}" \
+          -e DB_PORT="{{ db_port }}" \
+          -e DB_NAME="{{ db_name }}" \
+          -e DB_USER="{{ db_user }}" \
+          -e DB_PASS="{{ db_pass }}" \
+          python:3.10-slim /bin/sh -c "pip install flask psycopg2-binary && python /app/app.py"
