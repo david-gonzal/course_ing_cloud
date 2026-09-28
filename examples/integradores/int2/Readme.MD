@@ -6,6 +6,8 @@ Ejecución del Despliegue
     terraform init
     terraform apply -auto-approve
 
+    terraform output
+
     Ejecutar Ansible:
     Bash
 
