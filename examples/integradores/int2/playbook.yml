@@ -1,0 +1,135 @@
+---
+- name: Configurar Clusters k3s y desplegar App
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: 1. Instalar k3s sin Traefik (Ahorro de memoria)
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: 2. Configurar kubeconfig para ec2-user
+      file:
+        path: /home/ec2-user/.kube
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+        mode: '0755'
+
+    - name: 3. Copiar archivo de configuración de k3s
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/ec2-user/.kube/config
+        remote_src: yes
+        owner: ec2-user
+        group: ec2-user
+        mode: '0600'
+
+    - name: 4. Crear manifiesto de Kubernetes app-k8s.yaml
+      copy:
+        dest: /home/ec2-user/app-k8s.yaml
+        owner: ec2-user
+        group: ec2-user
+        content: |
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: banco-app-deployment
+            labels:
+              app: banco-app
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: banco-app
+            template:
+              metadata:
+                labels:
+                  app: banco-app
+              spec:
+                dnsPolicy: ClusterFirstWithHostNet
+                containers:
+                - name: web
+                  image: python:3.10-slim
+                  command:
+                  - sh
+                  - -c
+                  - |
+                    pip install flask psycopg2-binary
+                    cat << 'PYEOF' > app.py
+                    import os, psycopg2
+                    from flask import Flask, jsonify, request
+                    app = Flask(__name__)
+
+                    def get_db():
+                        return psycopg2.connect(
+                            host=os.environ.get("DB_HOST"),
+                            database=os.environ.get("DB_NAME"),
+                            user=os.environ.get("DB_USER"),
+                            password=os.environ.get("DB_PASS")
+                        )
+
+                    @app.route('/')
+                    def health():
+                        try:
+                            c = get_db()
+                            c.close()
+                            return jsonify({"status": "healthy", "region": os.environ.get("AWS_REGION")}), 200
+                        except Exception as e:
+                            return jsonify({"status": "unhealthy", "error": str(e)}), 500
+
+                    @app.route('/venta', methods=['POST'])
+                    def venta():
+                        data = request.get_json() or {}
+                        monto = data.get("monto", 0.0)
+                        try:
+                            c = get_db()
+                            cur = c.cursor()
+                            cur.execute("CREATE TABLE IF NOT EXISTS ventas (id SERIAL PRIMARY KEY, monto NUMERIC);")
+                            cur.execute("INSERT INTO ventas (monto) VALUES (%s) RETURNING id;", (monto,))
+                            v_id = cur.fetchone()[0]
+                            c.commit()
+                            cur.close()
+                            c.close()
+                            return jsonify({"status": "success", "id": v_id, "monto": monto}), 201
+                        except Exception as e:
+                            return jsonify({"status": "error", "error": str(e)}), 500
+
+                    if __name__ == '__main__':
+                        app.run(host='0.0.0.0', port=5000)
+                    PYEOF
+                    python app.py
+                  env:
+                  - name: DB_HOST
+                    value: "{{ db_endpoint }}"
+                  - name: DB_NAME
+                    value: "{{ db_name }}"
+                  - name: DB_USER
+                    value: "{{ db_user }}"
+                  - name: DB_PASS
+                    value: "{{ db_pass }}"
+                  - name: AWS_REGION
+                    value: "{{ inventory_hostname }}"
+                  ports:
+                  - containerPort: 5000
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: banco-app-service
+          spec:
+            type: NodePort
+            selector:
+              app: banco-app
+            ports:
+            - port: 5000
+              targetPort: 5000
+              nodePort: 30080
+
+    - name: 5. Desplegar aplicación en k3s
+      become_user: ec2-user
+      shell: |
+        export KUBECONFIG=/home/ec2-user/.kube/config
+        kubectl apply -f /home/ec2-user/app-k8s.yaml
