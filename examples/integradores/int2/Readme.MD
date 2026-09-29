@@ -27,20 +27,36 @@ Ejecución del Despliegue
 
 Pruebas:
 # 1. Comprobar salud (conectividad EC2 -> RDS Primario)
-curl http://44.201.18.125:30080/
+curl http://13.221.155.108:30080/
+
+curl http://3.15.225.119:30080/
 
 # Respuesta esperada:
 # {"region":"k3s-primary","status":"healthy"}
 
 # 2. Registrar transacciones/ventas (Prueba de Escritura)
-curl -X POST http://35.172.190.122:30080/venta \
+curl -X POST http://13.221.155.108:30080/venta \
   -H "Content-Type: application/json" \
   -d '{"monto": 1500.50}'
 
-curl -X POST http://44.201.18.125:30080/venta \
+curl -X POST http://3.15.225.119:30080/venta \
   -H "Content-Type: application/json" \
   -d '{"monto": 800.00}'
 
 # Respuesta esperada:
 # {"id":1,"monto":1500.5,"status":"success"}
 # {"id":2,"monto":800.0,"status":"success"}
+
+
+
+aws ec2 describe-instances \
+  --region us-east-1 \
+  --filters "Name=tag:Name,Values=k3s-node-us-east-1" "Name=instance-state-name,Values=running" \
+  --query "Reservations[].Instances[].PublicIpAddress" \
+  --output text
+
+
+PGPASSWORD='Secret123!' psql "host=127.0.0.1 port=5433 user=admin_banco dbname=banco_db sslmode=require"
+
+ssh -i ~/.ssh/id_rsa -L 5433:banco-db-replica.cnmogkm8gdpd.us-east-2.rds.amazonaws.com:5432 ec2-user@3.15.225.119 -N &
+
